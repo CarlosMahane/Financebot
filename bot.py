@@ -172,17 +172,19 @@ async def handle_text(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     msg = await update.message.reply_text("⏳ Analisando...")
     try:
         parsed = parser.parse_text(text)
-        await msg.delete()
         if "error" in parsed:
-            await update.message.reply_text(
-                f"🤔 {parsed['error']}\n\nTente: `gastei 50 no mercado` ou `/ajuda`",
-                parse_mode=ParseMode.MARKDOWN
+            await msg.edit_text(
+                f"🤔 {parsed['error']}\n\nTente: gastei 50 no mercado ou /ajuda"
             )
         else:
+            await msg.delete()
             await confirm_transaction(update, parsed, text, "text")
     except Exception as e:
         logger.error(f"Erro parse_text: {e}")
-        await msg.edit_text("❌ Erro ao processar. Tente novamente.")
+        try:
+            await msg.edit_text("❌ Erro ao processar. Tente novamente.")
+        except:
+            await update.message.reply_text("❌ Erro ao processar. Tente novamente.")
 
 
 async def handle_photo(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
@@ -197,15 +199,17 @@ async def handle_photo(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         image_bytes = await file.download_as_bytearray()
 
         parsed = parser.parse_image(bytes(image_bytes))
-        await msg.delete()
-
         if "error" in parsed:
-            await update.message.reply_text(f"🤔 Não identifiquei um comprovante.\n{parsed['error']}")
+            await msg.edit_text(f"🤔 Não identifiquei um comprovante.\n{parsed['error']}")
         else:
+            await msg.delete()
             await confirm_transaction(update, parsed, "[foto]", "photo")
     except Exception as e:
         logger.error(f"Erro handle_photo: {e}")
-        await msg.edit_text("❌ Erro ao ler imagem. Tente novamente.")
+        try:
+            await msg.edit_text("❌ Erro ao ler imagem. Tente novamente.")
+        except:
+            await update.message.reply_text("❌ Erro ao ler imagem. Tente novamente.")
 
 
 async def handle_voice(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
