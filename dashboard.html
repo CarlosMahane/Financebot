@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FinanceBot Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --surface2: #1a1a24;
+    --border: rgba(255,255,255,0.06);
+    --accent: #7c5cfc;
+    --accent2: #fc5c7d;
+    --accent3: #5cfcb4;
+    --text: #f0f0f8;
+    --muted: #6b6b88;
+    --green: #5cfcb4;
+    --red: #fc5c7d;
+    --yellow: #fcd95c;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Background orbs */
+  body::before {
+    content: '';
+    position: fixed;
+    top: -200px; left: -200px;
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(124,92,252,0.12) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  body::after {
+    content: '';
+    position: fixed;
+    bottom: -200px; right: -200px;
+    width: 500px; height: 500px;
+    background: radial-gradient(circle, rgba(252,92,125,0.08) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 0 20px; position: relative; z-index: 1; }
+
+  /* Header */
+  header {
+    padding: 32px 20px 24px;
+    border-bottom: 1px solid var(--border);
+    position: relative; z-index: 1;
+  }
+  .header-inner { max-width: 1100px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  .logo { display: flex; align-items: center; gap: 12px; }
+  .logo-icon {
+    width: 40px; height: 40px; border-radius: 12px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+  }
+  .logo-text { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 20px; }
+  .logo-text span { color: var(--accent); }
+  .month-selector {
+    display: flex; gap: 8px; align-items: center;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 12px; padding: 6px 12px;
+  }
+  .month-selector button {
+    background: none; border: none; color: var(--muted);
+    cursor: pointer; font-size: 18px; line-height: 1;
+    padding: 2px 6px; border-radius: 6px; transition: all 0.2s;
+  }
+  .month-selector button:hover { color: var(--text); background: var(--border); }
+  .month-label { font-family: 'Syne', sans-serif; font-weight: 600; font-size: 14px; min-width: 120px; text-align: center; }
+
+  /* Loading */
+  .loading {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 60vh; gap: 20px;
+  }
+  .spinner {
+    width: 48px; height: 48px; border: 3px solid var(--border);
+    border-top-color: var(--accent); border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Cards grid */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; padding: 28px 0 0; }
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 20px; padding: 24px;
+    position: relative; overflow: hidden;
+    animation: fadeUp 0.5s ease both;
+  }
+  .card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--card-color, var(--accent)), transparent);
+  }
+  .card-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+  .card-value { font-family: 'Syne', sans-serif; font-size: 28px; font-weight: 800; line-height: 1; }
+  .card-sub { font-size: 13px; color: var(--muted); margin-top: 6px; }
+  .card.green { --card-color: var(--green); }
+  .card.red { --card-color: var(--red); }
+  .card.yellow { --card-color: var(--yellow); }
+  .card.purple { --card-color: var(--accent); }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Charts section */
+  .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 24px 0; }
+  @media (max-width: 680px) { .charts { grid-template-columns: 1fr; } }
+
+  .chart-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 20px; padding: 24px;
+    animation: fadeUp 0.5s ease 0.1s both;
+  }
+  .chart-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 16px; margin-bottom: 20px; }
+  .chart-wrap { position: relative; height: 240px; }
+
+  /* Transactions */
+  .section-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 18px; margin-bottom: 16px; }
+  .tx-list { display: flex; flex-direction: column; gap: 10px; padding-bottom: 40px; }
+  .tx-item {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 14px 18px;
+    display: flex; align-items: center; gap: 14px;
+    animation: fadeUp 0.4s ease both;
+    transition: border-color 0.2s;
+  }
+  .tx-item:hover { border-color: rgba(255,255,255,0.12); }
+  .tx-emoji { font-size: 22px; width: 40px; height: 40px; background: var(--surface2); border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .tx-info { flex: 1; }
+  .tx-desc { font-weight: 500; font-size: 14px; }
+  .tx-cat { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .tx-right { text-align: right; }
+  .tx-amount { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 15px; }
+  .tx-amount.expense { color: var(--red); }
+  .tx-amount.income { color: var(--green); }
+  .tx-date { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  /* Empty state */
+  .empty { text-align: center; padding: 60px 20px; color: var(--muted); }
+  .empty-icon { font-size: 48px; margin-bottom: 16px; }
+  .empty h3 { font-family: 'Syne', sans-serif; font-size: 18px; color: var(--text); margin-bottom: 8px; }
+
+  .error-box {
+    background: rgba(252,92,125,0.1); border: 1px solid rgba(252,92,125,0.3);
+    border-radius: 16px; padding: 20px; margin: 24px 0;
+    color: var(--red); font-size: 14px; text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="logo">
+      <div class="logo-icon">💰</div>
+      <div class="logo-text">Finance<span>Bot</span></div>
+    </div>
+    <div class="month-selector">
+      <button onclick="changeMonth(-1)">‹</button>
+      <span class="month-label" id="monthLabel">—</span>
+      <button onclick="changeMonth(1)">›</button>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+  <div id="app">
+    <div class="loading">
+      <div class="spinner"></div>
+      <span style="color:var(--muted);font-size:14px">Carregando dados...</span>
+    </div>
+  </div>
+</div>
+
+<script>
+const UPSTASH_URL = 'UPSTASH_REDIS_REST_URL_PLACEHOLDER';
+const UPSTASH_TOKEN = 'UPSTASH_REDIS_REST_TOKEN_PLACEHOLDER';
+
+let currentDate = new Date();
+let chartDonut = null;
+let chartBar = null;
+
+const MONTHS_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+const CAT_EMOJI = {
+  'Alimentação':'🍽️','Transporte':'🚗','Saúde':'💊','Moradia':'🏠',
+  'Lazer':'🎮','Educação':'📚','Vestuário':'👕','Mercado':'🛒',
+  'Restaurante':'🍕','Combustível':'⛽','Farmácia':'💉','Serviços':'🔧',
+  'Receita':'💰','Outros':'📌'
+};
+
+const CAT_COLORS = [
+  '#7c5cfc','#fc5c7d','#5cfcb4','#fcd95c','#5cb4fc',
+  '#fc9e5c','#c45cfc','#5cfce8','#fc5c5c','#a0fc5c'
+];
+
+async function redis(cmd) {
+  const r = await fetch(`${UPSTASH_URL}/${cmd.map(encodeURIComponent).join('/')}`, {
+    headers: { Authorization: `Bearer ${UPSTASH_TOKEN}` }
+  });
+  const d = await r.json();
+  return d.result;
+}
+
+function getMonthKey() {
+  const y = currentDate.getFullYear();
+  const m = String(currentDate.getMonth()+1).padStart(2,'0');
+  return `${y}-${m}`;
+}
+
+async function loadData() {
+  const uid = new URLSearchParams(location.search).get('uid');
+  if (!uid) {
+    document.getElementById('app').innerHTML = `<div class="error-box">❌ Parâmetro <code>uid</code> não encontrado na URL.<br>Use o link enviado pelo bot: <code>/resumo</code></div>`;
+    return;
+  }
+
+  const month = getMonthKey();
+  document.getElementById('monthLabel').textContent = `${MONTHS_PT[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
+
+  try {
+    const raw = await redis(['LRANGE', `txs:${uid}:${month}`, '0', '-1']);
+    const txs = (raw || []).map(r => JSON.parse(r));
+
+    const expenses = txs.filter(t => t.type === 'expense');
+    const incomes  = txs.filter(t => t.type === 'income');
+    const totalExp = expenses.reduce((s,t) => s + t.amount, 0);
+    const totalInc = incomes.reduce((s,t) => s + t.amount, 0);
+    const balance  = totalInc - totalExp;
+
+    // Category totals
+    const cats = {};
+    expenses.forEach(t => { cats[t.category] = (cats[t.category]||0) + t.amount; });
+    const catsSorted = Object.entries(cats).sort((a,b) => b[1]-a[1]);
+
+    // Daily totals for bar chart
+    const days = {};
+    expenses.forEach(t => {
+      const d = t.transaction_date?.slice(8,10) || '?';
+      days[d] = (days[d]||0) + t.amount;
+    });
+    const daysSorted = Object.entries(days).sort((a,b) => a[0].localeCompare(b[0]));
+
+    render(txs, totalExp, totalInc, balance, catsSorted, daysSorted);
+  } catch(e) {
+    document.getElementById('app').innerHTML = `<div class="error-box">❌ Erro ao carregar dados: ${e.message}</div>`;
+  }
+}
+
+function fmt(v) {
+  return 'R$ ' + v.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+function render(txs, totalExp, totalInc, balance, catsSorted, daysSorted) {
+  const balColor = balance >= 0 ? 'var(--green)' : 'var(--red)';
+
+  const html = `
+    <div class="cards">
+      <div class="card red" style="animation-delay:0s">
+        <div class="card-label">Gastos do mês</div>
+        <div class="card-value" style="color:var(--red)">${fmt(totalExp)}</div>
+        <div class="card-sub">${txs.filter(t=>t.type==='expense').length} transações</div>
+      </div>
+      <div class="card green" style="animation-delay:0.05s">
+        <div class="card-label">Receitas</div>
+        <div class="card-value" style="color:var(--green)">${fmt(totalInc)}</div>
+        <div class="card-sub">${txs.filter(t=>t.type==='income').length} entradas</div>
+      </div>
+      <div class="card ${balance>=0?'green':'red'}" style="animation-delay:0.1s">
+        <div class="card-label">Saldo</div>
+        <div class="card-value" style="color:${balColor}">${fmt(balance)}</div>
+        <div class="card-sub">${balance>=0?'✓ Positivo':'⚠ Negativo'}</div>
+      </div>
+      <div class="card yellow" style="animation-delay:0.15s">
+        <div class="card-label">Maior gasto</div>
+        <div class="card-value" style="color:var(--yellow);font-size:18px">${catsSorted[0]?catsSorted[0][0]:'—'}</div>
+        <div class="card-sub">${catsSorted[0]?fmt(catsSorted[0][1]):''}</div>
+      </div>
+    </div>
+
+    <div class="charts">
+      <div class="chart-card">
+        <div class="chart-title">Por categoria</div>
+        <div class="chart-wrap"><canvas id="donutChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Gastos por dia</div>
+        <div class="chart-wrap"><canvas id="barChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="section-title">Últimas transações</div>
+    <div class="tx-list">
+      ${txs.length === 0 ? `
+        <div class="empty">
+          <div class="empty-icon">📭</div>
+          <h3>Nenhuma transação ainda</h3>
+          <p>Mande uma mensagem pro bot para registrar gastos</p>
+        </div>` :
+        [...txs].sort((a,b) => new Date(b.created_at)-new Date(a.created_at)).slice(0,30).map((t,i) => `
+        <div class="tx-item" style="animation-delay:${i*0.03}s">
+          <div class="tx-emoji">${CAT_EMOJI[t.category]||'📌'}</div>
+          <div class="tx-info">
+            <div class="tx-desc">${t.description||t.category}</div>
+            <div class="tx-cat">${t.category} · ${t.source==='photo'?'📸 foto':t.source==='voice'?'🎤 voz':'💬 texto'}</div>
+          </div>
+          <div class="tx-right">
+            <div class="tx-amount ${t.type}">${t.type==='income'?'+':'-'}${fmt(t.amount)}</div>
+            <div class="tx-date">${t.transaction_date||''}</div>
+          </div>
+        </div>`).join('')
+      }
+    </div>
+  `;
+
+  document.getElementById('app').innerHTML = html;
+
+  // Donut chart
+  if (catsSorted.length > 0) {
+    const ctx1 = document.getElementById('donutChart').getContext('2d');
+    if (chartDonut) chartDonut.destroy();
+    chartDonut = new Chart(ctx1, {
+      type: 'doughnut',
+      data: {
+        labels: catsSorted.map(c=>c[0]),
+        datasets: [{
+          data: catsSorted.map(c=>c[1]),
+          backgroundColor: CAT_COLORS,
+          borderWidth: 0,
+          hoverOffset: 8
+        }]
+      },
+      options: {
+        cutout: '65%',
+        plugins: {
+          legend: { position:'right', labels:{ color:'#6b6b88', font:{size:11}, boxWidth:10, padding:12 } },
+          tooltip: { callbacks: { label: ctx => ` ${fmt(ctx.raw)}` } }
+        }
+      }
+    });
+  }
+
+  // Bar chart
+  if (daysSorted.length > 0) {
+    const ctx2 = document.getElementById('barChart').getContext('2d');
+    if (chartBar) chartBar.destroy();
+    chartBar = new Chart(ctx2, {
+      type: 'bar',
+      data: {
+        labels: daysSorted.map(d=>d[0]+'/'+String(currentDate.getMonth()+1).padStart(2,'0')),
+        datasets: [{
+          data: daysSorted.map(d=>d[1]),
+          backgroundColor: 'rgba(124,92,252,0.7)',
+          borderRadius: 8,
+          borderSkipped: false
+        }]
+      },
+      options: {
+        plugins: { legend:{display:false}, tooltip:{ callbacks:{ label: ctx => ` ${fmt(ctx.raw)}` } } },
+        scales: {
+          x: { ticks:{color:'#6b6b88',font:{size:10}}, grid:{display:false} },
+          y: { ticks:{color:'#6b6b88',font:{size:10}, callback: v=>'R$'+v}, grid:{color:'rgba(255,255,255,0.04)'} }
+        }
+      }
+    });
+  }
+}
+
+function changeMonth(delta) {
+  currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth()+delta, 1);
+  document.getElementById('app').innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  loadData();
+}
+
+loadData();
+</script>
+</body>
+</html>

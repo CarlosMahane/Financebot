@@ -283,9 +283,18 @@ def main():
     app.add_handler(MessageHandler(filters.VOICE, handle_voice))
     app.add_handler(CallbackQueryHandler(handle_callback))
 
+    start_dashboard()
     logger.info("Bot iniciado! 🤖")
     app.run_polling(drop_pending_updates=True)
 
 
 if __name__ == "__main__":
     main()
+
+
+def start_dashboard():
+    """Inicia o servidor do dashboard em background."""
+    import threading
+    from server import start_server
+    t = threading.Thread(target=start_server, daemon=True)
+    t.start()
