@@ -20,6 +20,10 @@ from telegram.ext import (
     CallbackQueryHandler, ContextTypes, filters
 )
 from telegram.constants import ParseMode
+import uuid
+
+# Armazena transações pendentes em memória
+pending_transactions = {}
 
 import database as db
 import claude_parser as parser
@@ -63,21 +67,21 @@ async def confirm_transaction(update: Update, parsed: dict, raw_input: str, sour
         f"📅 {parsed['date']}"
     )
 
-    # Serializa dados no callback_data (compacto)
-    import json
-    data = json.dumps({
+    # Salva dados em memória, usa UUID curto no callback
+    tx_id = str(uuid.uuid4())[:8]
+    pending_transactions[tx_id] = {
         "a": parsed["amount"],
         "c": parsed["category"],
         "d": parsed["description"],
         "dt": parsed["date"],
         "t": parsed["type"],
         "s": source
-    }, ensure_ascii=False, separators=(",", ":"))
+    }
 
     keyboard = InlineKeyboardMarkup([
         [
-            InlineKeyboardButton("✅ Salvar", callback_data=f"save|{data}"),
-            InlineKeyboardButton("❌ Cancelar", callback_data="cancel")
+            InlineKeyboardButton("✅ Salvar", callback_data=f"save|{tx_id}"),
+            InlineKeyboardButton("❌ Cancelar", callback_data=f"cancel|{tx_id}")
         ]
     ])
 
@@ -232,8 +236,11 @@ async def handle_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         return
 
     if query.data.startswith("save|"):
-        import json
-        data = json.loads(query.data[5:])
+        tx_id = query.data[5:]
+        data = pending_transactions.pop(tx_id, None)
+        if not data:
+            await query.edit_message_text("❌ Transação expirada. Manda de novo!")
+            return
         try:
             tx = db.save_transaction(
                 user_id=user.id,
@@ -247,11 +254,10 @@ async def handle_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             emoji = category_emoji(data["c"])
             type_label = "Gasto" if data["t"] == "expense" else "Receita"
             await query.edit_message_text(
-                f"✅ *{type_label} salvo!*\n\n"
+                f"✅ {type_label} salvo!\n\n"
                 f"{emoji} {data['c']} — {fmt_amount(data['a'])}\n"
                 f"📝 {data['d']}\n\n"
-                f"Use /resumo para ver seus gastos 📊",
-                parse_mode=ParseMode.MARKDOWN
+                f"Use /resumo para ver seus gastos",
             )
         except Exception as e:
             logger.error(f"Erro save: {e}")
